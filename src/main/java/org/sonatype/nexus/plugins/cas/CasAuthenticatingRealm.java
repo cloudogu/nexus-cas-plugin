@@ -1,5 +1,6 @@
 package org.sonatype.nexus.plugins.cas;
 
+import com.google.common.base.Strings;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,6 +23,7 @@ import org.apache.shiro.authc.credential.AllowAllCredentialsMatcher;
 import org.apache.shiro.authz.AuthorizationInfo;
 import org.apache.shiro.authz.SimpleAuthorizationInfo;
 import org.apache.shiro.cas.CasRealm;
+import org.apache.shiro.cas.CasToken;
 import org.apache.shiro.subject.PrincipalCollection;
 import org.apache.shiro.subject.SimplePrincipalCollection;
 import org.apache.shiro.util.CollectionUtils;
@@ -32,6 +34,7 @@ import org.jasig.cas.client.validation.TicketValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.eclipse.sisu.Description;
+import org.jasig.cas.client.validation.TicketValidator;
 import org.sonatype.nexus.plugins.cas.client.CasRestClient;
 import org.sonatype.nexus.plugins.cas.config.CasPluginConfiguration;
 import org.sonatype.nexus.plugins.cas.config.model.v1_0_0.Configuration;
@@ -87,13 +90,12 @@ public class CasAuthenticatingRealm extends CasRealm implements Initializable {
 		}
 	}
 
-	@Override
-	protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
-		if (!isConfigured || casRestClient == null || token == null) {
-			return null;
-		}
-
-		UsernamePasswordToken upToken = (UsernamePasswordToken) token;
+    @Override
+    public boolean supports(AuthenticationToken token) {
+        return token instanceof CasToken || token instanceof UsernamePasswordToken;
+    }
+    
+    private AuthenticationInfo doGetRestAuthenticationInfo(UsernamePasswordToken upToken) {
 		URI tgt = null;
 		try {
 			log.debug("Authenticating user '" + upToken.getUsername() + "' ...");
@@ -120,6 +122,41 @@ public class CasAuthenticatingRealm extends CasRealm implements Initializable {
 				}
 			}
 		}
+    }
+    
+    private AuthenticationInfo doGetTokenAuthenticationInfo(CasToken token) throws AuthenticationException {
+        String ticket = (String)token.getCredentials();
+        if (Strings.isNullOrEmpty(ticket)) {
+              return null;
+        }
+
+        TicketValidator ticketValidator = ensureTicketValidator();
+        try 
+        {
+            Assertion casAssertion = ticketValidator.validate(ticket, getCasService());
+            return createAuthenticationInfo(ticket, casAssertion);
+        }  catch (TicketValidationException ex) {
+            log.warn("Error validating remote ticket", ex);
+            throw new AuthenticationException(ex);
+        }
+    }
+
+	@Override
+	protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException {
+		if (!isConfigured || casRestClient == null || token == null) {
+			return null;
+		}
+
+        AuthenticationInfo authenticationInfo = null;
+        
+        if ( token instanceof CasToken){
+            log.info("start cas authentication with CasToken");
+            authenticationInfo = doGetTokenAuthenticationInfo((CasToken) token);
+        } else if (token instanceof UsernamePasswordToken) {
+            authenticationInfo = doGetRestAuthenticationInfo((UsernamePasswordToken) token);
+        }
+        
+		return authenticationInfo;
 	}
 
 	@Override
