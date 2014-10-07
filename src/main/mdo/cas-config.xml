@@ -71,6 +71,12 @@
                     <required>false</required>
                     <defaultValue>5000</defaultValue>
                 </field>
+                <field>
+                    <name>defaultRoles</name>
+                    <description>Comma-separated list of default roles</description>
+                    <type>String</type>
+                    <required>false</required>
+                </field>
             </fields>
         </class>
     </classes>
