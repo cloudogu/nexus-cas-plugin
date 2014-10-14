@@ -16,6 +16,15 @@ NX.define('Nexus.cas.controller.Cas', {
   ],
 
   init: function(){
+    // handle cas redirect on ajax request
+    Ext.Ajax.on('requestexception', function(conn, response){
+      if (response.status === 401){
+        var casLocation = response.getResponseHeader('X-CAS-Redirect');
+        if (casLocation){
+          window.location = casLocation;
+        }
+      }
+    }, this);
     // override logout
     Sonatype.repoServer.RepoServer.logout = this.logout;
     // override login handler

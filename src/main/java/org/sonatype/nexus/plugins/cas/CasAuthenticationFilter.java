@@ -48,6 +48,8 @@ import javax.servlet.http.HttpServletResponse;
 @Singleton
 public class CasAuthenticationFilter extends HttpFilter {
 
+    private static final String HEADER_CAS_REDIRECT = "X-CAS-Redirect";
+  
     private static final String TICKET_PARAMETER = "ticket";
     private static final Logger logger = LoggerFactory.getLogger(CasAuthenticationFilter.class);
 
@@ -81,7 +83,7 @@ public class CasAuthenticationFilter extends HttpFilter {
             String ticket = request.getParameter(TICKET_PARAMETER);
 
             if (Strings.isNullOrEmpty(ticket)) {
-                response.sendRedirect(CasUtil.createCasLoginUrl(casPluginConfiguration));
+                sendRedirect(request, response, CasUtil.createCasLoginUrl(casPluginConfiguration));
             } else {
                 logger.info("create cas authentication token for ticket {}", ticket);
 
@@ -91,7 +93,7 @@ public class CasAuthenticationFilter extends HttpFilter {
                     securitySystem.login(new CasToken(ticket));
 
                     // redirect again to remove token from url
-                    response.sendRedirect(config.getCasService());
+                    sendRedirect(request, response, config.getCasService());
               } catch (AuthenticationException ex) {
                   throw new ServletException("authentication failed", ex);
               }
@@ -100,6 +102,15 @@ public class CasAuthenticationFilter extends HttpFilter {
         else
         {
             chain.doFilter(request, response);
+        }
+    }
+    
+    private void sendRedirect( HttpServletRequest request, HttpServletResponse response, String location ) throws IOException {
+        if ( CasUtil.isWebInterface(request) ){
+            response.setHeader(HEADER_CAS_REDIRECT, location);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+        } else {
+            response.sendRedirect(location);
         }
     }
 

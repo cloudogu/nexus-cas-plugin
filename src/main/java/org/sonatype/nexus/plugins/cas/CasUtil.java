@@ -25,6 +25,8 @@ import org.sonatype.security.SecuritySystem;
  */
 public final class CasUtil {
 
+    private static final String HEADER_NEXUS_UI = "X-Nexus-UI";
+  
     private CasUtil(){}
 
 
@@ -44,14 +46,18 @@ public final class CasUtil {
 
       if (!Strings.isNullOrEmpty(ua))
       {
-        browser = isBrowser(ua);
+        browser = isWebInterface(request) || isBrowserUserAgent(ua);
       }
 
       return browser;
     }
 
-    private static boolean isBrowser(String ua) {
+    private static boolean isBrowserUserAgent(String ua) {
         return BrowserType.WEB_BROWSER == UserAgent.parseUserAgentString(ua).getBrowser().getBrowserType();
+    }
+    
+    public static boolean isWebInterface(HttpServletRequest request){
+      return request.getHeader(HEADER_NEXUS_UI) != null;
     }
 
 

@@ -36,6 +36,7 @@ public class CasAuthenticationModule extends AbstractModule {
 
             @Override
             protected void configureServlets() {
+                filter("/*").through(CasSingleSignOutFilter.class);
                 filter("/cas/logout").through(CasLogoutAuthenticationFilter.class);
                 filter("/*").through(CasAuthenticationFilter.class);
             }
