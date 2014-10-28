@@ -48,8 +48,8 @@ public class CasSingleSignOutFilter extends HttpFilter
   public void init(FilterConfig filterConfig) throws ServletException
   {
     super.init(filterConfig);
-    WeakSessionMappingStorage sessionStorage = new WeakSessionMappingStorage();
-    handler.setSessionMappingStorage(sessionStorage);
+    // WeakSessionMappingStorage sessionStorage = new WeakSessionMappingStorage();
+    // handler.setSessionMappingStorage(sessionStorage);
     handler.init();
   }
 
