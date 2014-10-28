@@ -16,7 +16,14 @@ package org.sonatype.nexus.plugins.cas;
 //~--- non-JDK imports --------------------------------------------------------
 
 import com.google.inject.AbstractModule;
-import com.google.inject.servlet.ServletModule;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.sonatype.nexus.guice.FilterChainModule;
+
+import static org.sonatype.nexus.security.filter.FilterProviderSupport
+  .filterKey;
 
 //~--- JDK imports ------------------------------------------------------------
 
@@ -24,23 +31,46 @@ import javax.inject.Named;
 
 /**
  * Register CAS filters.
- * 
+ *
  * @author Sebastian Sdorra <sebastian.sdorra@triology.de>
  */
 @Named
-public class CasAuthenticationModule extends AbstractModule {
+public class CasAuthenticationModule extends AbstractModule
+{
 
-    @Override
-    protected void configure() {
-        install(new ServletModule() {
+  /** Field description */
+  private static final Logger log =
+    LoggerFactory.getLogger(CasAuthenticationModule.class);
 
-            @Override
-            protected void configureServlets() {
-                filter("/*").through(CasSingleSignOutFilter.class);
-                filter("/cas/logout").through(CasLogoutAuthenticationFilter.class);
-                filter("/*").through(CasAuthenticationFilter.class);
-            }
+  //~--- methods --------------------------------------------------------------
 
-        });
-    }
+  /**
+   * Method description
+   *
+   */
+  @Override
+  protected void configure()
+  {
+    bind(filterKey("casSingleSignOut")).to(CasSingleSignOutFilter.class);
+    bind(filterKey("casLogout")).to(CasLogoutAuthenticationFilter.class);
+    bind(filterKey("casAuth")).to(CasAuthenticationFilter.class);
+
+    install(new FilterChainModule()
+    {
+
+      @Override
+      protected void configure()
+      {
+        addFilterChain("/cas/logout", "casSingleSignOut,casLogout");
+
+        // addFilterChain("", "casAuth");
+        addFilterChain("/", "casSingleSignOut,casAuth");
+        addFilterChain("/index.html", "casSingleSignOut,casAuth");
+        addFilterChain("/cas/login", "casSingleSignOut,casAuth");
+        addFilterChain("/service/**", "casSingleSignOut,casAuth");
+        addFilterChain("/**", "casSingleSignOut");
+      }
+
+    });
+  }
 }
